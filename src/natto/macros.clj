@@ -13,7 +13,8 @@
         value-type (type value)
         type-map   {:type value-type
                     :anno type-anno}]
-    (if (s/valid? ::sp/typeCheck type-map)
-      `(def ~name ~value)
-      (throw (IllegalArgumentException. (str "The given value type  " value-type " do not match the type annotation " type-anno))))))
-
+    `(let [~'value# ~value
+           ~'type-map# ~type-map]
+       (if (s/valid? ::sp/typeCheck ~'type-map#)
+         (def ~name ~'value#)
+         (throw (IllegalArgumentException. (str "The given value type  " (:type ~'type-map#)" do not match the type annotation " (:anno ~'type-map#))))))))
