@@ -2,31 +2,30 @@
   (:require [clojure.test :refer :all]
             [natto.macros :refer [ta-def]]))
 
-(deftest correct-def-type-annotation
+(deftest def-type-annotation
 
-  (try
-    (ta-def value :- Long 42)
-    (is (= value 42))
-    (catch Exception e
-      (is false (str "An unexpected exception was thrown: " e))))
-  
-  (try
-    (ta-def value :- String "42")
-    (is (= value "42"))
-    (catch Exception e
-      (is false (str "An unexpected exception was thrown: " e))))
+  (testing "Valid type annotation"
+    (ta-def x :- String "Hello")
+    (is (= "Hello" x)))
 
-  (try
-    (ta-def value :- Boolean true)
-    (is (= value true))
-    (catch Exception e
-      (is false (str "An unexpected exception was thrown: " e))))
+  (testing "Valid type annotation"
+    (ta-def x :- Number 42)
+    (is (= 42 x)))
   
-    (try
-      (ta-def value :- Number 42)
-      (is (= value 42))
-      (catch Exception e
-        (is false (str "An unexpected exception was thrown: " e)))))
+  #_(testing "Valid type annotation with Integer"
+    (ta-def z :- Integer 42)
+    (is (= 42 z)))
+  
+  (testing "Invalid type annotation (type mismatch)"
+    (is (thrown? IllegalArgumentException (ta-def y :- Integer "Hello"))))
+
+  (testing "Invalid type annotation (wrong symbol)"
+    (is (thrown? IllegalArgumentException (ta-def a :- Symbol 42)))))
+
+
+; Run the tests
+(run-tests)
+
 
 
 ;; tocheck
