@@ -1,0 +1,17 @@
+#+TITLE: Reasoning
+#+AUTHOR: Egydio Pacheco
+
+
+
+* Questions I have asked myself at some point
+
+
+** How do I perform checkings at compile time in Clojure?
+** How do I determine if something broke on compile time or runtime?
+** It is possible to develop a type system that relies on macro expansion phase to perform checkings? Whare are pros/cons of doing this?
+
+** Which Clojure tools relies the compiler macro expansion phase to perforrm something?
+
+** Is type annotations desirable?
+From a practical point of view, it is annoying. From a documentation point of view is interesting, because is realiable. However, most of clojure things are maps. How knowing something is a map would help?
+In general, I like the ocaml approach, to have a separate file with function signature (with type annotation), but that would be a different problem.

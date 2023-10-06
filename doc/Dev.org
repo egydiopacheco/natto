@@ -1,0 +1,81 @@
+#+TITLE: Dev
+#+AUTHOR: Egydio Pacheco
+
+
+* Ideas from dev ns that I want to keep
+
+** Runtime check type annotation (for def)
+#+begin_src clojure
+(defmacro t-def
+  [name & body]
+  (let [type-symb (if (= typ-symb (first body))
+                    typ-symb
+                    (throw (IllegalArgumentException. (str "Wrong type annotation symbol."))))
+        type-anno (second body)
+        value (last body)]
+    `(let [value# ~value]
+       (if (and ~type-anno (not (instance? ~type-anno value#)))
+         (throw (IllegalArgumentException. (str "Value does not match specified type: " value# " is not of type " ~type-anno)))
+         (def ~name value#)))))
+
+(t-def var1 :- Number 42) ;; Works fine
+(t-def var2 :- String 42)    ;; Result in runtime
+#+end_src
+
+|
+** Macro-phase check type annotation (for def)
+#+begin_src clojure
+(s/def ::typeCheck #(let [type (:type %)
+                                      anno (:anno %)]
+                                 (or (isa? type anno)
+                                       (isa? anno type))))
+
+(def typ-symb :-)
+;; macro-expansion compile time check
+(defmacro ta-def
+  [name & body]
+  (let [type-symb (if (= typ-symb (first body))
+                                  typ-symb
+                                  (throw (IllegalArgumentException. (str "Wrong type annotation symbol."))))
+        type-anno  (resolve (second body))
+        value         (last body)
+        value-type (type value)
+        type-map   {:type value-type
+                          :anno type-anno}]
+    (if (s/valid? ::typeCheck type-map)
+      `(def ~name ~value)
+      (throw (IllegalArgumentException. (str "The given value type  " value-type " do not match the type annotation " type-anno))))))
+
+
+(ta-def myvar :- Long 42) ;; Create myvar successfully
+
+(ta-def myvar2 :- String 42) ;; The given value type class java.lang.Long do not match the type annotation class java.lang.String
+#+end_src
+
+** Macro-phase type error catch with Spec
+#+begin_src clojure
+(s/def ::even-int (s/and int? even?))
+
+(defmacro compile-time-check [val]
+  (if (s/valid? ::even-int val)
+    val
+    (throw (IllegalArgumentException. "Value must be an even integer"))))
+
+(defn add-even [a b]
+  (let [a (compile-time-check a)
+        b (compile-time-check b)]
+    (+ a b)))
+
+(add-even 1 4)
+#+end_src
+
+When the code above compile, it returns the following error:
+#+begin_comment
+clojure.lang.Compiler$CompilerException
+   Error compiling dev/dev.clj at (13:11)
+   #:clojure.error{:phase :macro-syntax-check,
+                   :line 13,
+                   :column 11,
+                   :source "/Users/egydioneto/Documents/natto/dev/dev.clj",
+                   :symbol compile-time-check}
+#+end_comment
