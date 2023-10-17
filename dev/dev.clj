@@ -1,189 +1,114 @@
 (ns dev
-  (:require [clojure.spec.alpha :as s]
-            [clojure.tools.analyzer.jvm :as ana.jvm]
-            [clojure.tools.analyzer.passes.jvm.emit-form :as e]
-            [clojure.tools.analyzer.ast :as ast]
-            [clojure.tools.namespace.repl :refer [refresh]]))
+  "The Natto Playground.
+   Evaluate forms here to test the Refinement Type System."
+  (:require [natto.core :refer [def-refined assume-refined]]
+            [natto.state :refer [*deep-checks*]]
+            [natto.assumptions]))
 
+;; A simple function to calculate absolute difference.
+;; Z3 verifies that the result is ALWAYS positive.
+(def-refined abs-diff
+  [x :- Int, y :- Int]
+  -> {ret [:- Int | (>= ret 0)]}
+  (if (> x y)
+    (- x y)
+    (- y x)))
 
-(s/def ::numberT Number)
-(s/def ::numberT #(instance? java.lang.Number %))
-(s/def ::numberT #(validate-type-annotation % Long))
-
-
-(s/def ::number number?)
-(s/def ::string string?)
-
-
-
-;; runtime check
-(defmacro t-def
-  [name & body]
-  (let [type-symb (if (= typ-symb (first body))
-                    typ-symb
-                    (throw (IllegalArgumentException. (str "Wrong type annotation symbol."))))
-        type-anno (second body)
-        value (last body)]
-    `(let [value# ~value]
-       (if (and ~type-anno (not (instance? ~type-anno value#)))
-         (throw (IllegalArgumentException. (str "Value does not match specified type: " value# " is not of type " ~type-anno)))
-         (def ~name value#)))))
-
-
-(isa? Number Long)
-(supers (class Long))
-
-(defn check-type [param1 target-type]
-  (if (= target-type (type param1))
-    (println "param1 matches the target type.")
-    (if (isa? (type param1) target-type)
-      (println "param1 inherits the target type")
-      (println "param1 does not match the target type."))))
-
-(type param1)
-(def param1 42) ; Example value of param1
-(check-type param1 Integer) ; Check if param1 is an Integer
-(check-type param1 String)  ; Check if param1 is a String
-(check-type param1 Double)  ; Check if param1 is a Number
-(check-type param1 Boolean) ; Check if param1 is a Boolean
-
-
-#_(s/def ::typeAnn (fn [param1 param2]
-                   (fn [%] ; % is the argument of the inner function
-                     (and (isa? param1 %)
-                          (isa? param2 %)))))
-
-
-;(s/def ::test (and #(string? %) #(number? %)))
-
-;(s/valid? ::test "1" 42) 
-
-
-;(s/def ::typeAnn (fn [param1 param2]
-;                   (or (isa? param1 param2)
-;                       (isa? param2 param1))))
+;; (abs-diff 10 5) ;; => 5
+;; (abs-diff 5 10) ;; => 5
 
 
 
-(isa? Long java.lang.Long)
-(or true false)
+;; Z3 understands 'cond' and 'let'.
+;; This function returns a logic-based signum (-1, 0, 1).
+(def-refined safe-sign
+  [x :- Int]
+  -> {ret [:- Int | (or (= ret -1) (= ret 0) (= ret 1))]}
+  (cond
+    (> x 0) 1
+    (< x 0) -1
+    :else   0))
 
-
-;(def xs [Number Long])
-
-;(def fx {:type String
-;         :anno Number})
-
-(let [mytype (:type fx)
-      myanno (:anno fx)])
-
-(s/valid? ::numberT (type "LOL") (type 42))
-
-(isa? (type "LOL") (type 42))
-
-;; in my my case, int? should be replaced by 
-(s/conform (s/and int? pos?) 3)
-
-
-(or (instance? Long Number) (instance? Number Long))
-
-
-(s/def ::number number?)
-(s/def ::string string?)
-
-(s/valid? ::numberT String)
-
-(s/def ::typeCheck #(let [type (:type %)
-                          anno (:anno %)]
-                      (or (isa? type anno)
-                          (isa? anno type))))
-
-(def typ-symb :-)
-;; macro-expansion compile time check
-(defmacro ta-def
-  [name & body]
-  (let [type-symb (if (= typ-symb (first body))
-                    typ-symb
-                    (throw (IllegalArgumentException. (str "Wrong type annotation symbol."))))
-        type-anno  (resolve (second body))
-        value      (last body)
-        value-type (type value)
-        type-map   {:type value-type
-                    :anno type-anno}]
-    (if (s/valid? ::typeCheck type-map)
-      `(def ~name ~value)
-      (throw (IllegalArgumentException. (str "The given value type  " value-type " do not match the type annotation " type-anno))))))
-
-
-(ta-def myvar :- Long 42)
-
-(ta-def myvar2 :- String 42)
-
-;; name should be `myvar` [OK]
-;; body should be `:- Number 42` [OK]
-;; type-symb should be `:-` [OK]
-;; type-anno should be `Number` [OK]
-;; value should be `42` [OK]
-;; value-type should `java.lang.Long` [OK]
-;; then it should check if `type-anno` equals to `value-type` [] 
-;; OR check if `type-anno` contains `value-type` or vice versa
-;; for example, Number type majors(contains) Long type
-;; that means that Number annotation should work for 42
-;; because it is a Long and consequently a Number
-
-(ta-def myvar2 :- String 42)
+;; (safe-sign -50) ;; => -1
 
 
 
+;; A safe accessor that requires the vector to be non-empty.
+;; If you remove the precondition `(> (count v) 0)`, this will fail to compile!
+(def-refined safe-head
+  [v :- (Array Int Int) | (> (count v) 0)]
+  -> Int
+  (get v 0))
+
+;; (safe-head [10 20]) ;; => 10
+
+;; RUNTIME SAFETY CHECK:
+;; This will throw an AssertionError at runtime because the contract is violated.
+;; (safe-head [])
 
 
-(defn validate-type-annotation [value type-annotation]
-  (let [actual-type (class value)]
-    (= type-annotation actual-type)))
+;; We can define the shape of a map (Record).
+;; Here we enforce a business rule: Discounted price must be lower than original.
+(def-refined apply-discount
+  ;; FIX: Constrain BOTH price and discount
+  [item :- (Record {:price Int, :discount Int})
+        | (and (>= (:price item) 0)
+               (>= (:discount item) 0))]
 
-(println (supers (class 42)))
+  -> {ret [:- Int | (and (>= ret 0) (<= ret (:price item)))]}
 
-(def my-var 42)
+  (let [new-price (- (:price item) (:discount item))]
+    (if (< new-price 0)
+      0
+      new-price)))
 
-(if (s/valid? ::numberT my-var)
-  (println "my-var has the correct type annotation!")
-  (println "my-var does not have the correct type annotation!"))
-
-
-;(s/valid? ::numberT my-var)
-
-;(s/conform (s/and (s/valid? ::number value) (s/valid? ::numberT type-anno)))
-
-;(s/valid? ::number 42)
-
-;(s/conform ::numberT Number)
-
-;; (s/conform (s/and int? pos?) 3)
-
-(defmacro def-anno
-  [name _type & body]
-  (let [type (first body)
-        value (second body)]
-    (if (s/valid? ::number value)
-      `(defn ~name []
-         (let [result# (do ~@body)]
-           (if (number? result#)
-             result#
-             (throw (IllegalArgumentException. (str "Function result does not match specified type: " result# " is not of type Number"))))))
-      (if (s/valid? type ::string)
-        `(defn ~name []
-           (let [result# (do ~@body)]
-             (if (string? result#)
-               result#
-               (throw (IllegalArgumentException. (str "Function result does not match specified type: " result# " is not of type String"))))))
-        (throw (IllegalArgumentException. (str "Unsupported type annotation: " type)))))))
+;; (apply-discount {:price 100 :discount 20}) ;; => 80
 
 
-;;(e/emit-form (ana.jvm/analyze '(+ 2 1)))
+;; A generic identity function that works for ANY type T.
+(def-refined my-identity
+  :forall [T]
+  [x :- T]
+  -> {ret [:- T | (= ret x)]}
+  x)
+
+;; (my-identity 42)      ;; => 42
+;; (my-identity "hello") ;; => "hello"
 
 
-;;(ana.jvm/analyze-ns 'natto.core)
+;; Note: Math/abs and legacy-sqrt are already assumed in natto.assumptions
 
-;;(ana.jvm/analyze+eval '(defmacro x []))
+(def-refined safe-root
+  [x :- Int]
+  -> Int
+  (if (< x 0)
+    0
+    ;; Safe to call because we proved x >= 0 in this branch
+    (legacy-sqrt x)))
 
-;;(ana.jvm/analyze+eval '(x))
+;; (safe-root 25) ;; => 5
+;; (safe-root -5) ;; => 0
+
+
+;; Example A: LOGIC ERROR
+;; Z3 will find a counterexample (e.g., x = 5).
+#_ (def-refined buggy-math
+     [x :- Int | (> x 0)]
+     -> {ret [:- Int | (> ret x)]} ;; Promise: Result > Input
+     (- x 1))                      ;; Bug: Result < Input
+
+
+;; Example B: TYPE ERROR
+;; The VCG catches this before Z3 runs.
+#_ (def-refined type-mismatch
+     [x :- Int, b :- Bool]
+     -> Int
+     (+ x b)) ;; Cannot add Int + Bool
+
+
+;; Example C: STRUCTURAL ERROR
+;; Accessing a field that doesn't exist in the Record definition.
+#_ (def-refined bad-record
+     [u :- (Record {:id Int})]
+     -> Int
+     (:email u)) ;; Field :email not defined
