@@ -30,6 +30,12 @@ jobs:
     - name: Install dependencies
       run: lein deps
 
+    - name: Install clj-kondo
+      run: curl -sL https://raw.githubusercontent.com/clj-kondo/clj-kondo/master/script/install-clj-kondo | bash -s -- --dir /usr/local/bin
+
+    - name: Run clj-kondo
+      run: clj-kondo --lint src
+
     - name: Test with Leiningen
       run: lein test
 
