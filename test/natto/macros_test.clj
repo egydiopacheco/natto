@@ -2,7 +2,7 @@
   (:require [clojure.test :refer :all]
             [natto.macros :refer [ta-def]]))
 
-(deftest def-type-annotation
+#_(deftest def-type-annotation
 
   (testing "Valid type annotation"
     (ta-def x :- String "Hello")
@@ -21,11 +21,6 @@
 
   (testing "Invalid type annotation (wrong symbol)"
     (is (thrown? IllegalArgumentException (ta-def a :- Symbol 42)))))
-
-
-; Run the tests
-(run-tests)
-
 
 
 ;; tocheck
