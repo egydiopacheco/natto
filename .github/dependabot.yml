@@ -5,7 +5,19 @@
 
 version: 2
 updates:
-  - package-ecosystem: "" # See documentation for possible values
+  # Enable version updates for Clojure (Leiningen)
+  - package-ecosystem: "clojure" # See documentation for possible values
     directory: "/" # Location of package manifests
     schedule:
-      interval: "weekly"
+      interval: "weekly" # Change to "daily", "weekly", or "monthly"
+    open-pull-requests-limit: 10
+
+  # Enable version updates for Clojure (deps.edn)
+  - package-ecosystem: "clojure" # See documentation for possible values
+    directory: "/" # Location of package manifests
+    schedule:
+      interval: "weekly" # Change to "daily", "weekly", or "monthly"
+    open-pull-requests-limit: 10
+    allow:
+      - dependency-type: "direct" # Only direct dependencies
+      - dependency-type: "indirect" # Only indirect dependencies
