@@ -3,7 +3,8 @@
   :url "https://github.com/egydiopacheco/natto"
   :license {:name "EPL-2.0 OR GPL-2.0-or-later WITH Classpath-exception-2.0"
             :url "https://www.eclipse.org/legal/epl-2.0/"}
-  :dependencies [[org.clojure/clojure "1.11.1"]]
+  :dependencies [[org.clojure/clojure "1.11.1"]
+                 [org.clojure/core.match "1.0.1"]]
   :profiles {:dev {:dependencies [[org.clojure/tools.namespace "0.3.1"]
                                   [org.clojure/tools.analyzer.jvm "1.2.3"]
                                   [criterium "0.4.6"]
