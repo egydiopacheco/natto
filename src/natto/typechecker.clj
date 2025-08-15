@@ -60,16 +60,15 @@
   [expr]
   (rest expr))
 
-(defn extract-meta
-  [expr]
-  (when (seq? expr)
-    (meta (first expr))))
-
 (defmacro typechecker
   [expr]
   (letfn [(analyze [expr]
             (let [unquoted-expr (unquote expr)]
-              (if (fn-call? unquoted-expr)
+              (cond
+                (string? unquoted-expr) 'String
+                (number? unquoted-expr) 'Number
+                (symbol? unquoted-expr) (lookup-type unquoted-expr)
+                (fn-call? unquoted-expr)
                 (let [fn-name (fn-name-from-call unquoted-expr)
                       fn-type (lookup-type fn-name)
                       arg-expressions (fn-args-from-call unquoted-expr)]
@@ -78,9 +77,9 @@
                   (doseq [[arg-type arg-expr] (map vector (:args fn-type) arg-expressions)]
                     (let [actual-type (analyze arg-expr)]
                       (when (and actual-type (not (= arg-type actual-type)))
-                        (throw (Exception. (str "Type mismatch in call to " fn-name 
-                                                ", expected: " arg-type 
+                        (throw (Exception. (str "Type mismatch in call to " fn-name
+                                                ", expected: " arg-type
                                                 ", got: " actual-type))))))
                   (:ret fn-type))
-                nil)))]
+                :else nil)))]
     (analyze expr)))
