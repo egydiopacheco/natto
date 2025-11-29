@@ -1,12 +1,17 @@
 (defproject natto "0.1.0-SNAPSHOT"
-  :description "Experimental static checking"
+  :description "Experimental Refinement Type Checker"
   :url "https://github.com/egydiopacheco/natto"
   :license {:name "EPL-2.0 OR GPL-2.0-or-later WITH Classpath-exception-2.0"
             :url "https://www.eclipse.org/legal/epl-2.0/"}
   :dependencies [[org.clojure/clojure "1.11.1"]
                  [org.clojure/core.match "1.0.1"]]
+  :jvm-opts ["-Djava.library.path=~/Documents/z3/build"]
   :profiles {:dev {:dependencies [[org.clojure/tools.namespace "0.3.1"]
                                   [org.clojure/tools.analyzer.jvm "1.2.3"]
+                                  [com.microsoft/z3 "4.15.2"]
+                                  [cheshire "6.1.0"]
+                                  [org.clojure/tools.trace "0.7.10"]
+                                  [com.github.flow-storm/flow-storm-dbg "4.5.7"]
                                   [criterium "0.4.6"]
                                   [instaparse "1.4.12"]
                                   [cider/cider-nrepl "0.30.0"]]
